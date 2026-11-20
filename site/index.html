@@ -208,7 +208,7 @@
 
     <!-- Bottom Navigation Bar -->
     <nav class="fixed bottom-0 inset-x-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-t border-slate-200 dark:border-slate-800 bottom-nav-safe">
-      <div class="max-w-3xl mx-auto grid grid-cols-3 h-16">
+      <div class="max-w-3xl mx-auto grid grid-cols-4 h-16">
         <button type="button" data-tab="students" class="nav-btn flex flex-col items-center justify-center gap-1 text-xs font-semibold text-brand-600 dark:text-teal-400">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
@@ -226,6 +226,10 @@
             <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
           </svg>
           <span>Study Books</span>
+        </button>
+        <button type="button" data-tab="research" class="nav-btn flex flex-col items-center justify-center gap-1 text-xs font-semibold">
+          <svg aria-hidden="true" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="10" cy="10" r="6"/><path d="m15 15 6 6"/></svg>
+          <span>Research</span>
         </button>
       </div>
     </nav>
@@ -249,6 +253,8 @@
   <!-- Toast Container -->
   <div id="toast" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-semibold shadow-xl opacity-0 pointer-events-none transition-opacity duration-200"></div>
 
+  <script src="/research-topics.js"></script>
+  <script src="/research.js"></script>
   <script>
     // =========================================================================
     // 1. GROUNDED CATALOG OF JEHOVAH'S WITNESSES BIBLE STUDY PUBLICATIONS
@@ -660,7 +666,7 @@
       const searchWrap = document.getElementById("searchBarWrap");
       const lffPill = document.querySelector('[data-filter="lff"]');
 
-      if (state.activeTab === "books") {
+      if (["books", "research"].includes(state.activeTab)) {
         fab.classList.add("hidden");
         searchWrap.classList.add("hidden");
       } else {
@@ -697,7 +703,8 @@
       } else if (state.activeTab === "visits") {
         main.innerHTML = renderVisitsView();
       } else {
-        main.innerHTML = renderBooksView();
+        if (state.activeTab === "research") main.replaceChildren(researchPanel);
+        else main.innerHTML = renderBooksView();
       }
     }
 
