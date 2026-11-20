@@ -1,0 +1,1399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Ministry Companion — Field Service Tracker</title>
+  <meta name="theme-color" content="#134e4a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Ministry" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  <!-- Tailwind and the Inter font are self-hosted so the app works offline -->
+  <script src="/vendor/tailwind-3.4.17.js"></script>
+  <link href="/vendor/fonts/inter.css" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+          colors: {
+            brand: {
+              50: '#effaf8',
+              100: '#d7f2ee',
+              500: '#0d9488',
+              600: '#0f766e',
+              700: '#115e59',
+              800: '#134e4a',
+              900: '#0b3634'
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    html, body { font-family: 'Inter', system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
+    .safe-pb { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px)); }
+    .bottom-nav-safe { padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px)); }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    @keyframes slideUp {
+      from { transform: translateY(16px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .animate-slide-up { animation: slideUp 0.22s ease-out forwards; }
+
+    /* Media always scales to fit its container */
+    img, video, canvas, svg, iframe, embed, object { max-width: 100%; }
+    img, video { height: auto; }
+
+    /* ===================================================================
+       Phone-only refinements (below Tailwind's `sm` breakpoint, 640px).
+       Larger screens keep the existing layout untouched.
+       =================================================================== */
+    @media (max-width: 639px) {
+      html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+      body { font-size: 16px; overflow-x: clip; }
+
+      /* --- Readable body text: at least 16px --- */
+      body #mainContent .text-xs,
+      body #mainContent .text-sm,
+      body #modalBody .text-xs,
+      body #modalBody .text-sm,
+      body #toast { font-size: 1rem; line-height: 1.5rem; }
+      /* Small pills/badges and eyebrow labels stay compact but legible */
+      body #mainContent [class*="text-[10px]"],
+      body #mainContent [class*="text-[11px]"],
+      body #modalBody [class*="text-[10px]"],
+      body #modalBody [class*="text-[11px]"] { font-size: 0.8125rem; line-height: 1.25rem; }
+      body #mainContent h2.text-xs,
+      body #modalBody h4.text-xs,
+      body #modalBody div.uppercase.text-xs { font-size: 0.875rem; line-height: 1.25rem; }
+
+      /* Form fields at 16px also stop iOS from zooming in on focus */
+      body input, body select, body textarea { font-size: 16px !important; }
+
+      /* --- Tap targets: at least 44 x 44px --- */
+      body button,
+      body a[href],
+      body select,
+      body input:not([type="hidden"]):not([type="file"]),
+      body #modalBody label.cursor-pointer { min-height: 44px; min-width: 44px; }
+      body #mainContent a[href],
+      body #mainContent button,
+      body #modalBody button,
+      body #modalBody label.cursor-pointer { display: inline-flex; align-items: center; justify-content: center; }
+      body #modalBody button.w-full,
+      body #modalBody label.cursor-pointer { display: flex; }
+      body #themeToggleBtn,
+      body #backupBtn,
+      body #modalCloseBtn { width: 44px; height: 44px; }
+      body .filter-pill { font-size: 0.9375rem; padding-left: 1rem; padding-right: 1rem; }
+      body #searchInput { min-height: 48px; }
+
+      /* Bottom tab bar: full-height targets, labels sized to fit 3 columns */
+      body nav .nav-btn { min-height: 56px; font-size: 0.8125rem; padding: 0 0.25rem; text-align: center; line-height: 1.1; }
+
+      /* Header scrolls away on phones so content isn't squeezed by a tall sticky bar */
+      body #app > header { position: relative; }
+
+      /* --- Prevent sideways scrolling --- */
+      body #mainContent,
+      body #modalBody { overflow-wrap: anywhere; word-break: break-word; }
+      body #mainContent .flex > *:not([class*="min-w-["]),
+      body #modalBody .flex > *:not([class*="min-w-["]) { min-width: 0; }
+      body #mainContent button.shrink-0,
+      body #mainContent .flex > a[href]:not([class*="min-w-["]),
+      body #mainContent .flex > button:not([class*="min-w-["]),
+      body #modalBody .flex > button:not([class*="min-w-["]) { min-width: 44px; }
+      body #toast { max-width: calc(100vw - 2rem); width: max-content; text-align: center; }
+
+      /* Keep the add button clear of the tab bar on notched phones */
+      body #fabAddBtn { bottom: calc(6rem + env(safe-area-inset-bottom, 0px)); min-height: 48px; font-size: 1rem; }
+      body .safe-pb { padding-bottom: calc(8.5rem + env(safe-area-inset-bottom, 0px)); }
+
+      /* Modal fits the visible viewport even with mobile browser chrome */
+      body #modalCard { max-height: 90vh; max-height: 90dvh; }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 min-h-screen transition-colors duration-200">
+  <div id="app" class="max-w-3xl mx-auto min-h-screen flex flex-col safe-pb">
+    <!-- Top Header -->
+    <header class="bg-gradient-to-br from-brand-900 via-brand-800 to-teal-900 text-white px-4 pt-5 pb-6 rounded-b-3xl shadow-lg sticky top-0 z-20">
+      <div class="flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-10 h-10 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center shrink-0 border border-white/20">
+            <svg class="w-5 h-5 text-amber-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            </svg>
+          </div>
+          <div class="min-w-0">
+            <h1 class="text-lg font-bold tracking-tight truncate">Ministry Companion</h1>
+            <p class="text-xs text-teal-100/80 truncate">Local Field Service &amp; Study Tracker</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <button id="themeToggleBtn" type="button" aria-label="Toggle dark mode" class="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition">
+            <svg id="themeIconSun" class="w-4 h-4 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+            <svg id="themeIconMoon" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+          </button>
+          <button id="backupBtn" type="button" aria-label="Backup and settings" class="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Metrics Strip -->
+      <div class="grid grid-cols-3 gap-2.5 mt-4">
+        <div class="bg-white/10 backdrop-blur rounded-2xl px-3 py-2.5 border border-white/10">
+          <div class="text-[11px] uppercase tracking-wider text-teal-100/75 font-medium">Students</div>
+          <div id="statStudents" class="text-xl font-extrabold mt-0.5">0</div>
+        </div>
+        <div class="bg-white/10 backdrop-blur rounded-2xl px-3 py-2.5 border border-white/10">
+          <div class="text-[11px] uppercase tracking-wider text-teal-100/75 font-medium">Return Visits</div>
+          <div id="statVisits" class="text-xl font-extrabold mt-0.5">0</div>
+        </div>
+        <div class="bg-white/10 backdrop-blur rounded-2xl px-3 py-2.5 border border-white/10">
+          <div class="text-[11px] uppercase tracking-wider text-amber-200/90 font-medium">Due / Today</div>
+          <div id="statDue" class="text-xl font-extrabold text-amber-300 mt-0.5">0</div>
+        </div>
+      </div>
+
+      <!-- Search & Filter Bar (hidden on Books tab) -->
+      <div id="searchBarWrap" class="mt-4 space-y-2.5">
+        <div class="relative">
+          <svg class="w-4 h-4 text-teal-100/70 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input id="searchInput" type="search" placeholder="Search name, address, book, or question..." class="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-white/15 text-white placeholder-teal-100/65 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-amber-300/60" />
+        </div>
+        <div id="filterPills" class="flex items-center gap-2 overflow-x-auto no-scrollbar">
+          <button type="button" data-filter="all" class="filter-pill px-3 py-1 rounded-full text-xs font-semibold bg-white text-brand-900 transition shrink-0">All</button>
+          <button type="button" data-filter="due" class="filter-pill px-3 py-1 rounded-full text-xs font-semibold bg-white/15 text-white hover:bg-white/25 transition shrink-0">Follow-Up Due</button>
+          <button type="button" data-filter="lff" class="filter-pill px-3 py-1 rounded-full text-xs font-semibold bg-white/15 text-white hover:bg-white/25 transition shrink-0">Enjoy Life Forever!</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main id="mainContent" class="flex-1 px-4 pt-4 space-y-3.5"></main>
+
+    <!-- Floating Action Button (Students & Return Visits) -->
+    <button id="fabAddBtn" type="button" aria-label="Add new entry" class="fixed right-4 bottom-24 z-30 flex items-center gap-2 px-4 py-3.5 rounded-2xl bg-brand-600 hover:bg-brand-700 active:scale-95 text-white font-semibold text-sm shadow-xl shadow-brand-900/25 transition">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+      </svg>
+      <span id="fabLabel">Add Student</span>
+    </button>
+
+    <!-- Bottom Navigation Bar -->
+    <nav class="fixed bottom-0 inset-x-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-t border-slate-200 dark:border-slate-800 bottom-nav-safe">
+      <div class="max-w-3xl mx-auto grid grid-cols-3 h-16">
+        <button type="button" data-tab="students" class="nav-btn flex flex-col items-center justify-center gap-1 text-xs font-semibold text-brand-600 dark:text-teal-400">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+          <span>Bible Students</span>
+        </button>
+        <button type="button" data-tab="visits" class="nav-btn flex flex-col items-center justify-center gap-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+          </svg>
+          <span>Return Visits</span>
+        </button>
+        <button type="button" data-tab="books" class="nav-btn flex flex-col items-center justify-center gap-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+          </svg>
+          <span>Study Books</span>
+        </button>
+      </div>
+    </nav>
+  </div>
+
+  <!-- Modal Backdrop -->
+  <div id="modalBackdrop" class="fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-sm hidden items-end sm:items-center justify-center p-0 sm:p-4">
+    <div id="modalCard" class="w-full sm:max-w-lg bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[90vh] flex flex-col overflow-hidden animate-slide-up">
+      <div class="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-800">
+        <h2 id="modalTitle" class="text-base font-bold text-slate-900 dark:text-white">Modal</h2>
+        <button id="modalCloseBtn" type="button" aria-label="Close modal" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div id="modalBody" class="p-5 overflow-y-auto space-y-4"></div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-semibold shadow-xl opacity-0 pointer-events-none transition-opacity duration-200"></div>
+
+  <script>
+    // =========================================================================
+    // 1. GROUNDED CATALOG OF JEHOVAH'S WITNESSES BIBLE STUDY PUBLICATIONS
+    // =========================================================================
+    const LFF_LESSONS = [
+      "01 — How Can the Bible Help You?",
+      "02 — The Bible Gives Hope",
+      "03 — Can You Trust the Bible?",
+      "04 — Who Is God?",
+      "05 — The Bible Is God's Message to Us",
+      "06 — How Did Life Begin?",
+      "07 — What Is Jehovah Like?",
+      "08 — You Can Be Jehovah's Friend",
+      "09 — Draw Close to God Through Prayer",
+      "10 — How Can the Meetings of Jehovah's Witnesses Benefit You?",
+      "11 — How You Can Get the Most Out of the Bible",
+      "12 — What Will Help You to Keep Studying the Bible?",
+      "13 — How False Religion Misrepresents God",
+      "14 — How Can Our Worship Be Pleasing to God?",
+      "15 — Who Is Jesus?",
+      "16 — What Did Jesus Do While on Earth?",
+      "17 — What Is Jesus Like?",
+      "18 — How to Identify Real Christians",
+      "19 — Are Jehovah's Witnesses Real Christians?",
+      "20 — How the Congregation Is Organized",
+      "21 — How Is the Good News Being Preached?",
+      "22 — How Can You Share the Good News?",
+      "23 — Baptism—A Worthwhile Goal!",
+      "24 — What Is the Truth About Angels?",
+      "25 — What Is God's Purpose for Us?",
+      "26 — Why Do Evil and Suffering Exist?",
+      "27 — How Can Jesus' Death Save Us?",
+      "28 — Show Appreciation for What Jehovah and Jesus Did for You",
+      "29 — What Happens When We Die?",
+      "30 — Your Loved Ones Can Live Again!",
+      "31 — What Is God's Kingdom?",
+      "32 — God's Kingdom Now Rules!",
+      "33 — What the Kingdom Will Accomplish",
+      "34 — How Can We Show Our Love for Jehovah?",
+      "35 — How to Make Good Decisions",
+      "36 — Be Honest in All Things",
+      "37 — What the Bible Says About Work and Money",
+      "38 — Appreciate the Gift of Life",
+      "39 — God's View of Blood",
+      "40 — How Can We Be Clean in God's Eyes?",
+      "41 — What Does the Bible Say About Sex?",
+      "42 — What Does the Bible Say About Singleness and Marriage?",
+      "43 — How Should Christians View Alcohol?",
+      "44 — Do All Celebrations Please God?",
+      "45 — What It Means to Be Neutral",
+      "46 — Why Make a Dedication and Get Baptized?",
+      "47 — Are You Ready to Get Baptized?",
+      "48 — Choose Your Friends Wisely",
+      "49 — How Can Your Family Be Happy?—Part 1",
+      "50 — How Can Your Family Be Happy?—Part 2",
+      "51 — How Can You Please Jehovah With Your Speech?",
+      "52 — Why Our Clothing and Appearance Matter",
+      "53 — Choose Entertainment That Pleases Jehovah",
+      "54 — The Role of \"the Faithful and Discreet Slave\"",
+      "55 — Support Your Local Congregation",
+      "56 — Maintain Unity in the Congregation",
+      "57 — What if You Commit a Serious Sin?",
+      "58 — Remain Loyal to Jehovah",
+      "59 — You Can Endure Persecution",
+      "60 — Continue Making Progress"
+    ];
+
+    const JW_STUDY_BOOKS = [
+      {
+        id: "lff",
+        title: "Enjoy Life Forever!—An Interactive Bible Course",
+        shortTitle: "Enjoy Life Forever! (Book)",
+        type: "Primary Textbook",
+        category: "Primary Course",
+        totalLessons: 60,
+        unitLabel: "Lesson",
+        description: "The main 4-section, 60-lesson interactive textbook in the Teaching Toolbox for personal Bible studies.",
+        lessons: LFF_LESSONS
+      },
+      {
+        id: "lffi",
+        title: "Enjoy Life Forever!—Introductory Bible Lessons",
+        shortTitle: "Enjoy Life Forever! (Brochure)",
+        type: "Introductory Brochure",
+        category: "Primary Course",
+        totalLessons: 3,
+        unitLabel: "Lesson",
+        description: "3-lesson introductory brochure used to start conversations and transition interested ones into the full course.",
+        lessons: LFF_LESSONS.slice(0, 3)
+      },
+      {
+        id: "fg",
+        title: "Good News From God!",
+        shortTitle: "Good News From God!",
+        type: "Study Brochure",
+        category: "Teaching Toolbox Brochures",
+        totalLessons: 15,
+        unitLabel: "Lesson",
+        description: "15-lesson topical brochure answering core Bible questions directly from Scripture."
+      },
+      {
+        id: "ll",
+        title: "Listen to God and Live Forever",
+        shortTitle: "Listen to God and Live Forever",
+        type: "Picture-Based Brochure",
+        category: "Teaching Toolbox Brochures",
+        totalLessons: 14,
+        unitLabel: "Section",
+        description: "Designed with visual illustrations and simple text for learners who benefit from picture-based study."
+      },
+      {
+        id: "ld",
+        title: "Listen to God",
+        shortTitle: "Listen to God",
+        type: "Simplified Picture Brochure",
+        category: "Teaching Toolbox Brochures",
+        totalLessons: 14,
+        unitLabel: "Section",
+        description: "Ultra-simple visual brochure containing mostly pictures for non-readers or basic literacy learners."
+      },
+      {
+        id: "bm",
+        title: "The Bible—What Is Its Message?",
+        shortTitle: "The Bible—What Is Its Message?",
+        type: "Overview Brochure",
+        category: "Supplemental & Topical",
+        totalLessons: 26,
+        unitLabel: "Section",
+        description: "Fast-moving summary of the entire Bible highlighting its overall Kingdom theme."
+      },
+      {
+        id: "jl",
+        title: "Who Are Doing Jehovah's Will Today?",
+        shortTitle: "Who Are Doing Jehovah's Will?",
+        type: "Congregation Guide Brochure",
+        category: "Supplemental & Topical",
+        totalLessons: 28,
+        unitLabel: "Lesson",
+        description: "Helps Bible students become acquainted with Jehovah's Witnesses, congregation meetings, and organization."
+      },
+      {
+        id: "lfb",
+        title: "Lessons You Can Learn From the Bible",
+        shortTitle: "Lessons You Can Learn From the Bible",
+        type: "Illustrated Bible Story Book",
+        category: "Youth & Family",
+        totalLessons: 103,
+        unitLabel: "Lesson",
+        description: "103 chronological Bible lessons widely used with families, children, and young learners."
+      },
+      {
+        id: "rj",
+        title: "Return to Jehovah",
+        shortTitle: "Return to Jehovah",
+        type: "Encouragement Brochure",
+        category: "Supplemental & Topical",
+        totalLessons: 5,
+        unitLabel: "Part",
+        description: "Warm, reassuring brochure used when studying with or encouraging inactive ones."
+      },
+      {
+        id: "bhs",
+        title: "What Can the Bible Teach Us?",
+        shortTitle: "What Can the Bible Teach Us?",
+        type: "Legacy Study Book",
+        category: "Legacy / Transitioning",
+        totalLessons: 19,
+        unitLabel: "Chapter",
+        description: "Simplified study book (superseded by Enjoy Life Forever! for new studies, still tracked for ongoing students)."
+      },
+      {
+        id: "lvs",
+        title: "How to Remain in God's Love",
+        shortTitle: "Remain in God's Love",
+        type: "Legacy Study Book",
+        category: "Legacy / Transitioning",
+        totalLessons: 17,
+        unitLabel: "Chapter",
+        description: "Secondary Christian living study book (superseded by Sections 3–4 of Enjoy Life Forever!)."
+      },
+      {
+        id: "custom",
+        title: "Other / Custom Publication",
+        shortTitle: "Custom Publication",
+        type: "Custom",
+        category: "Custom",
+        totalLessons: 20,
+        unitLabel: "Lesson",
+        description: "Track any other JW.ORG book, brochure, or article series."
+      }
+    ];
+
+    // =========================================================================
+    // 2. STATE & STORAGE (SANDBOX-SAFE LOCALSTORAGE)
+    // =========================================================================
+    const STORAGE_KEY = "ministry_companion_v1";
+
+    function todayISO() {
+      return new Date().toISOString().slice(0, 10);
+    }
+
+    function addDaysISO(days) {
+      const d = new Date();
+      d.setDate(d.getDate() + days);
+      return d.toISOString().slice(0, 10);
+    }
+
+    const DEFAULT_DATA = {
+      theme: "light",
+      activeTab: "students",
+      students: [
+        {
+          id: "stu_1",
+          name: "Samuel K. Johnson",
+          phone: "+231 77 555 0142",
+          address: "14th Street, Sinkor (Near Blue Gate)",
+          googleAddress: "https://maps.google.com/?q=Sinkor,Monrovia,Liberia",
+          bookId: "lff",
+          customBookName: "",
+          currentLesson: 14,
+          totalLessons: 60,
+          schedule: "Saturdays · 9:30 AM",
+          lastStudied: addDaysISO(-6),
+          notes: "Reads scriptures eagerly. Wife sometimes joins for the video.",
+          history: [
+            { date: addDaysISO(-13), lesson: 13, note: "Discussed Lesson 13; good questions on worship." },
+            { date: addDaysISO(-6), lesson: 14, note: "Completed Lesson 14; invited to Sunday meeting." }
+          ]
+        },
+        {
+          id: "stu_2",
+          name: "Grace Kollie",
+          phone: "+231 88 555 0198",
+          address: "Congo Town Back Road, House #22",
+          googleAddress: "Congo Town, Monrovia, Liberia",
+          bookId: "lffi",
+          customBookName: "",
+          currentLesson: 2,
+          totalLessons: 3,
+          schedule: "Wednesdays · 4:00 PM",
+          lastStudied: addDaysISO(-7),
+          notes: "Transitioning to full Enjoy Life Forever! book next week.",
+          history: [
+            { date: addDaysISO(-7), lesson: 2, note: "Really appreciated Psalm 37:29 promise." }
+          ]
+        }
+      ],
+      returnVisits: [
+        {
+          id: "rv_1",
+          name: "Mr. Emmanuel Taylor",
+          phone: "+231 77 555 0175",
+          address: "Paynesville Red Light, 2nd Alley Left",
+          googleAddress: "https://maps.google.com/?q=Paynesville,Monrovia,Liberia",
+          questionLeft: "What will life be like under the rule of God's Kingdom?",
+          publicationLeft: "Tract: What Is the Kingdom of God? (T-36)",
+          lastVisit: addDaysISO(-4),
+          nextVisit: todayISO(),
+          priority: "high",
+          notes: "Friendly shop owner; best time is morning before 11 AM."
+        },
+        {
+          id: "rv_2",
+          name: "Martha Dunbar",
+          phone: "",
+          address: "Old Road, Joe Bar Junction (Green Veranda)",
+          googleAddress: "Old Road, Monrovia, Liberia",
+          questionLeft: "Why does God allow suffering if He is loving and all-powerful?",
+          publicationLeft: "Enjoy Life Forever! Brochure",
+          lastVisit: addDaysISO(-2),
+          nextVisit: addDaysISO(2),
+          priority: "normal",
+          notes: "Asked about her late mother; share Lesson 02 or Rev 21:4 next."
+        }
+      ]
+    };
+
+    let state = loadState();
+    let searchQuery = "";
+    let activeFilter = "all";
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          return {
+            theme: parsed.theme || "light",
+            activeTab: parsed.activeTab || "students",
+            students: Array.isArray(parsed.students) ? parsed.students : DEFAULT_DATA.students,
+            returnVisits: Array.isArray(parsed.returnVisits) ? parsed.returnVisits : DEFAULT_DATA.returnVisits
+          };
+        }
+      } catch (e) {
+        // Fallback to in-memory default if storage is restricted
+      }
+      return JSON.parse(JSON.stringify(DEFAULT_DATA));
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {
+        // Ignore storage quota / sandbox restrictions
+      }
+    }
+
+    // =========================================================================
+    // 3. HELPERS
+    // =========================================================================
+    function getBook(bookId) {
+      return JW_STUDY_BOOKS.find(b => b.id === bookId) || JW_STUDY_BOOKS[0];
+    }
+
+    function getLessonTitle(book, lessonNum) {
+      if (book.lessons && book.lessons[lessonNum - 1]) {
+        return book.lessons[lessonNum - 1];
+      }
+      return `${book.unitLabel} ${lessonNum}`;
+    }
+
+    function escapeHTML(str) {
+      return String(str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function buildGoogleMapsUrl(googleAddress, fallbackAddress) {
+      const val = (googleAddress || "").trim();
+      if (val && /^https?:\/\//i.test(val)) {
+        return val;
+      }
+      const query = val || (fallbackAddress || "").trim();
+      if (!query) return "";
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+    }
+
+    function isDueOrOverdue(dateStr) {
+      if (!dateStr) return false;
+      return dateStr <= todayISO();
+    }
+
+    function isStudentDue(student) {
+      if (!student.lastStudied) return true;
+      const last = new Date(student.lastStudied + "T00:00:00");
+      const diffDays = Math.floor((Date.now() - last.getTime()) / 86400000);
+      return diffDays >= 7;
+    }
+
+    function formatShortDate(dateStr) {
+      if (!dateStr) return "Not set";
+      const d = new Date(dateStr + "T00:00:00");
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    }
+
+    function getInitials(name) {
+      const parts = String(name || "?").trim().split(/\s+/);
+      if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+      return (parts[0][0] || "?").toUpperCase();
+    }
+
+    let toastTimer = null;
+    function showToast(msg) {
+      const el = document.getElementById("toast");
+      el.textContent = msg;
+      el.classList.remove("opacity-0");
+      el.classList.add("opacity-100");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        el.classList.remove("opacity-100");
+        el.classList.add("opacity-0");
+      }, 2400);
+    }
+
+    // =========================================================================
+    // 4. THEME & NAVIGATION
+    // =========================================================================
+    function applyTheme() {
+      const html = document.documentElement;
+      const sun = document.getElementById("themeIconSun");
+      const moon = document.getElementById("themeIconMoon");
+      if (state.theme === "dark") {
+        html.classList.add("dark");
+        sun.classList.remove("hidden");
+        moon.classList.add("hidden");
+      } else {
+        html.classList.remove("dark");
+        sun.classList.add("hidden");
+        moon.classList.remove("hidden");
+      }
+    }
+
+    function updateNavAndHeader() {
+      document.querySelectorAll(".nav-btn").forEach(btn => {
+        const isActive = btn.dataset.tab === state.activeTab;
+        btn.className = isActive
+          ? "nav-btn flex flex-col items-center justify-center gap-1 text-xs font-semibold text-brand-600 dark:text-teal-400"
+          : "nav-btn flex flex-col items-center justify-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200";
+      });
+
+      const fab = document.getElementById("fabAddBtn");
+      const fabLabel = document.getElementById("fabLabel");
+      const searchWrap = document.getElementById("searchBarWrap");
+      const lffPill = document.querySelector('[data-filter="lff"]');
+
+      if (state.activeTab === "books") {
+        fab.classList.add("hidden");
+        searchWrap.classList.add("hidden");
+      } else {
+        fab.classList.remove("hidden");
+        searchWrap.classList.remove("hidden");
+        fabLabel.textContent = state.activeTab === "students" ? "Add Student" : "Add Return Visit";
+        if (lffPill) {
+          lffPill.classList.toggle("hidden", state.activeTab !== "students");
+        }
+      }
+
+      document.querySelectorAll(".filter-pill").forEach(pill => {
+        const active = pill.dataset.filter === activeFilter;
+        pill.className = active
+          ? "filter-pill px-3 py-1 rounded-full text-xs font-semibold bg-white text-brand-900 transition shrink-0 shadow-sm"
+          : "filter-pill px-3 py-1 rounded-full text-xs font-semibold bg-white/15 text-white hover:bg-white/25 transition shrink-0";
+      });
+
+      const dueStudents = state.students.filter(isStudentDue).length;
+      const dueVisits = state.returnVisits.filter(v => isDueOrOverdue(v.nextVisit)).length;
+      document.getElementById("statStudents").textContent = state.students.length;
+      document.getElementById("statVisits").textContent = state.returnVisits.length;
+      document.getElementById("statDue").textContent = dueStudents + dueVisits;
+    }
+
+    // =========================================================================
+    // 5. RENDERING VIEWS
+    // =========================================================================
+    function render() {
+      updateNavAndHeader();
+      const main = document.getElementById("mainContent");
+      if (state.activeTab === "students") {
+        main.innerHTML = renderStudentsView();
+      } else if (state.activeTab === "visits") {
+        main.innerHTML = renderVisitsView();
+      } else {
+        main.innerHTML = renderBooksView();
+      }
+    }
+
+    function renderStudentsView() {
+      const q = searchQuery.trim().toLowerCase();
+      const filtered = state.students.filter(s => {
+        const book = getBook(s.bookId);
+        const bookName = s.bookId === "custom" ? s.customBookName : book.title;
+        const matchesQuery = !q || [s.name, s.phone, s.address, s.googleAddress, bookName, s.notes]
+          .some(v => String(v || "").toLowerCase().includes(q));
+        if (!matchesQuery) return false;
+        if (activeFilter === "due") return isStudentDue(s);
+        if (activeFilter === "lff") return s.bookId === "lff" || s.bookId === "lffi";
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        return `
+          <div class="bg-white dark:bg-slate-900 rounded-3xl p-8 text-center border border-slate-200/80 dark:border-slate-800 shadow-sm mt-2">
+            <div class="w-14 h-14 mx-auto rounded-2xl bg-brand-50 dark:bg-brand-900/40 text-brand-600 dark:text-teal-400 flex items-center justify-center mb-3">
+              <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
+            </div>
+            <h3 class="font-bold text-slate-900 dark:text-white">No Bible Students Found</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Tap <strong>Add Student</strong> below to record a Bible student, their Google address, and study book.</p>
+          </div>
+        `;
+      }
+
+      return filtered.map(s => {
+        const book = getBook(s.bookId);
+        const total = Math.max(1, Number(s.totalLessons) || book.totalLessons || 60);
+        const current = Math.min(total, Math.max(1, Number(s.currentLesson) || 1));
+        const pct = Math.round((current / total) * 100);
+        const bookLabel = s.bookId === "custom" && s.customBookName ? s.customBookName : book.shortTitle;
+        const lessonTitle = getLessonTitle(book, current);
+        const mapsUrl = buildGoogleMapsUrl(s.googleAddress, s.address);
+        const due = isStudentDue(s);
+
+        return `
+          <article class="bg-white dark:bg-slate-900 rounded-3xl p-4 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-3">
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex items-center gap-3 min-w-0">
+                <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-brand-600 to-teal-700 text-white font-bold text-sm flex items-center justify-center shrink-0 shadow-sm">
+                  ${escapeHTML(getInitials(s.name))}
+                </div>
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <h3 class="font-bold text-base text-slate-900 dark:text-white truncate">${escapeHTML(s.name)}</h3>
+                    ${due ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300">Due</span>' : ''}
+                  </div>
+                  <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">${escapeHTML(s.schedule || "Schedule not set")} · Last: ${formatShortDate(s.lastStudied)}</p>
+                </div>
+              </div>
+              <button type="button" data-action="edit-student" data-id="${s.id}" class="px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition shrink-0">Edit</button>
+            </div>
+
+            <!-- Book & Lesson Progress -->
+            <div class="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-3 space-y-2 border border-slate-100 dark:border-slate-800">
+              <div class="flex items-center justify-between gap-2 text-xs">
+                <span class="font-semibold text-brand-700 dark:text-teal-300 truncate">${escapeHTML(bookLabel)}</span>
+                <span class="font-bold text-slate-700 dark:text-slate-200 shrink-0">${current} / ${total} (${pct}%)</span>
+              </div>
+              <div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                <div class="h-full rounded-full bg-gradient-to-r from-brand-500 to-teal-400 transition-all duration-300" style="width: ${pct}%"></div>
+              </div>
+              <p class="text-xs font-medium text-slate-700 dark:text-slate-300">Current: ${escapeHTML(lessonTitle)}</p>
+            </div>
+
+            <!-- Address & Contact Details -->
+            <div class="space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
+              ${s.address ? `<div class="flex items-start gap-2"><span class="text-slate-400 shrink-0">Home:</span><span class="font-medium">${escapeHTML(s.address)}</span></div>` : ''}
+              ${s.googleAddress ? `<div class="flex items-start gap-2"><span class="text-slate-400 shrink-0">Google:</span><span class="truncate text-brand-700 dark:text-teal-400 font-medium">${escapeHTML(s.googleAddress)}</span></div>` : ''}
+              ${s.phone ? `<div class="flex items-center gap-2"><span class="text-slate-400 shrink-0">Phone:</span><span class="font-medium">${escapeHTML(s.phone)}</span></div>` : ''}
+              ${s.notes ? `<p class="text-xs text-slate-500 dark:text-slate-400 italic pt-0.5">${escapeHTML(s.notes)}</p>` : ''}
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="flex items-center gap-2 pt-1 flex-wrap">
+              <button type="button" data-action="advance-lesson" data-id="${s.id}" class="flex-1 min-w-[110px] py-2 px-3 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold transition flex items-center justify-center gap-1.5">
+                <span>+1 ${escapeHTML(book.unitLabel)}</span>
+              </button>
+              <button type="button" data-action="log-study" data-id="${s.id}" class="py-2 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold transition">Log Session</button>
+              ${s.phone ? `<a href="tel:${escapeHTML(s.phone.replace(/\s+/g, ''))}" class="py-2 px-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800 text-xs font-semibold transition">Call</a>` : ''}
+              ${mapsUrl ? `<a href="${escapeHTML(mapsUrl)}" target="_blank" rel="noopener noreferrer" class="py-2 px-3 rounded-xl bg-sky-50 dark:bg-sky-950/50 text-sky-700 dark:text-sky-300 border border-sky-200/70 dark:border-sky-800 text-xs font-semibold transition">Maps</a>` : ''}
+            </div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    function renderVisitsView() {
+      const q = searchQuery.trim().toLowerCase();
+      const filtered = state.returnVisits.filter(v => {
+        const matchesQuery = !q || [v.name, v.phone, v.address, v.googleAddress, v.questionLeft, v.publicationLeft, v.notes]
+          .some(val => String(val || "").toLowerCase().includes(q));
+        if (!matchesQuery) return false;
+        if (activeFilter === "due") return isDueOrOverdue(v.nextVisit);
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        return `
+          <div class="bg-white dark:bg-slate-900 rounded-3xl p-8 text-center border border-slate-200/80 dark:border-slate-800 shadow-sm mt-2">
+            <div class="w-14 h-14 mx-auto rounded-2xl bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-3">
+              <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 class="font-bold text-slate-900 dark:text-white">No Return Visits Found</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Tap <strong>Add Return Visit</strong> to save someone's contact info, Google address, and the question you left.</p>
+          </div>
+        `;
+      }
+
+      return filtered.map(v => {
+        const mapsUrl = buildGoogleMapsUrl(v.googleAddress, v.address);
+        const due = isDueOrOverdue(v.nextVisit);
+
+        return `
+          <article class="bg-white dark:bg-slate-900 rounded-3xl p-4 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-3">
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex items-center gap-3 min-w-0">
+                <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 text-white font-bold text-sm flex items-center justify-center shrink-0 shadow-sm">
+                  ${escapeHTML(getInitials(v.name))}
+                </div>
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <h3 class="font-bold text-base text-slate-900 dark:text-white truncate">${escapeHTML(v.name)}</h3>
+                    ${due ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300">Visit Due</span>' : ''}
+                  </div>
+                  <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Last: ${formatShortDate(v.lastVisit)} · Next: ${formatShortDate(v.nextVisit)}</p>
+                </div>
+              </div>
+              <button type="button" data-action="edit-visit" data-id="${v.id}" class="px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition shrink-0">Edit</button>
+            </div>
+
+            <!-- Question Left for Return Visit (Prominent Callout) -->
+            <div class="rounded-2xl p-3 bg-amber-50/90 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60">
+              <div class="text-[11px] font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300 mb-1">Question Left for Return Visit</div>
+              <p class="text-sm font-semibold text-slate-900 dark:text-amber-100 leading-snug">${escapeHTML(v.questionLeft || "No question recorded yet.")}</p>
+              ${v.publicationLeft ? `<div class="text-[11px] text-amber-700 dark:text-amber-400 mt-1.5 font-medium">Left: ${escapeHTML(v.publicationLeft)}</div>` : ''}
+            </div>
+
+            <!-- Address & Contact Details -->
+            <div class="space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
+              ${v.address ? `<div class="flex items-start gap-2"><span class="text-slate-400 shrink-0">Home:</span><span class="font-medium">${escapeHTML(v.address)}</span></div>` : ''}
+              ${v.googleAddress ? `<div class="flex items-start gap-2"><span class="text-slate-400 shrink-0">Google:</span><span class="truncate text-brand-700 dark:text-teal-400 font-medium">${escapeHTML(v.googleAddress)}</span></div>` : ''}
+              ${v.phone ? `<div class="flex items-center gap-2"><span class="text-slate-400 shrink-0">Phone:</span><span class="font-medium">${escapeHTML(v.phone)}</span></div>` : ''}
+              ${v.notes ? `<p class="text-xs text-slate-500 dark:text-slate-400 italic pt-0.5">${escapeHTML(v.notes)}</p>` : ''}
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="flex items-center gap-2 pt-1 flex-wrap">
+              <button type="button" data-action="promote-visit" data-id="${v.id}" class="flex-1 min-w-[130px] py-2 px-3 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold transition">Start Bible Study</button>
+              <button type="button" data-action="mark-visited" data-id="${v.id}" class="py-2 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold transition">Visited Today</button>
+              ${v.phone ? `<a href="tel:${escapeHTML(v.phone.replace(/\s+/g, ''))}" class="py-2 px-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800 text-xs font-semibold transition">Call</a>` : ''}
+              ${mapsUrl ? `<a href="${escapeHTML(mapsUrl)}" target="_blank" rel="noopener noreferrer" class="py-2 px-3 rounded-xl bg-sky-50 dark:bg-sky-950/50 text-sky-700 dark:text-sky-300 border border-sky-200/70 dark:border-sky-800 text-xs font-semibold transition">Maps</a>` : ''}
+            </div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    function renderBooksView() {
+      const categories = [...new Set(JW_STUDY_BOOKS.filter(b => b.id !== "custom").map(b => b.category))];
+      const bookCards = categories.map(cat => {
+        const items = JW_STUDY_BOOKS.filter(b => b.category === cat);
+        return `
+          <section class="space-y-2.5">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 px-1">${escapeHTML(cat)}</h2>
+            <div class="space-y-2.5">
+              ${items.map(b => {
+                const count = state.students.filter(s => s.bookId === b.id).length;
+                return `
+                  <div class="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/90 dark:border-slate-800 shadow-sm flex items-start justify-between gap-3">
+                    <div class="space-y-1 min-w-0">
+                      <div class="flex items-center gap-2 flex-wrap">
+                        <h3 class="font-bold text-sm text-slate-900 dark:text-white">${escapeHTML(b.title)}</h3>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-brand-50 dark:bg-brand-900/50 text-brand-700 dark:text-teal-300">${escapeHTML(b.type)}</span>
+                      </div>
+                      <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">${escapeHTML(b.description)}</p>
+                      <div class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 pt-0.5">${b.totalLessons} ${escapeHTML(b.unitLabel)}s · ${count} active student${count === 1 ? '' : 's'}</div>
+                    </div>
+                    ${b.id === "lff" ? `<button type="button" data-action="browse-lff" class="px-3 py-1.5 rounded-xl bg-brand-600 text-white text-xs font-semibold shrink-0 hover:bg-brand-700 transition">60 Lessons</button>` : ''}
+                  </div>
+                `;
+              }).join("")}
+            </div>
+          </section>
+        `;
+      }).join("");
+
+      return `
+        <div class="space-y-5 pt-1">
+          <div class="bg-gradient-to-r from-brand-50 to-amber-50 dark:from-brand-950/60 dark:to-slate-900 rounded-2xl p-4 border border-brand-200/60 dark:border-brand-800/40">
+            <h2 class="font-bold text-sm text-brand-900 dark:text-teal-200">Active Bible Study Publications</h2>
+            <p class="text-xs text-slate-600 dark:text-slate-300 mt-1">All current Teaching Toolbox books and brochures used by Jehovah's Witnesses to conduct Bible studies, ready to assign to any student.</p>
+          </div>
+          ${bookCards}
+        </div>
+      `;
+    }
+
+    // =========================================================================
+    // 6. MODALS (ADD / EDIT / LOG / LESSON BROWSER / BACKUP)
+    // =========================================================================
+    function openModal(title, bodyHtml) {
+      document.getElementById("modalTitle").textContent = title;
+      document.getElementById("modalBody").innerHTML = bodyHtml;
+      const backdrop = document.getElementById("modalBackdrop");
+      backdrop.classList.remove("hidden");
+      backdrop.classList.add("flex");
+    }
+
+    function closeModal() {
+      const backdrop = document.getElementById("modalBackdrop");
+      backdrop.classList.add("hidden");
+      backdrop.classList.remove("flex");
+    }
+
+    function openStudentModal(studentId = null, prefill = null) {
+      const existing = studentId ? state.students.find(s => s.id === studentId) : null;
+      const s = existing || prefill || {
+        name: "",
+        phone: "",
+        address: "",
+        googleAddress: "",
+        bookId: "lff",
+        customBookName: "",
+        currentLesson: 1,
+        totalLessons: 60,
+        schedule: "",
+        lastStudied: todayISO(),
+        notes: ""
+      };
+
+      const bookOptions = JW_STUDY_BOOKS.map(b =>
+        `<option value="${b.id}" ${s.bookId === b.id ? "selected" : ""}>${escapeHTML(b.title)} (${b.totalLessons} ${b.unitLabel}s)</option>`
+      ).join("");
+
+      openModal(existing ? "Edit Bible Student" : "Add Bible Student", `
+        <form id="studentForm" class="space-y-3.5">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Student Name *</label>
+            <input name="name" required value="${escapeHTML(s.name)}" placeholder="e.g., Samuel K. Johnson" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Phone Number</label>
+              <input name="phone" type="tel" value="${escapeHTML(s.phone)}" placeholder="+231 77 000 0000" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Study Day &amp; Time</label>
+              <input name="schedule" value="${escapeHTML(s.schedule)}" placeholder="e.g., Saturdays · 9:30 AM" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Home / Street Address</label>
+            <input name="address" value="${escapeHTML(s.address)}" placeholder="House #, Street, Landmark" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Google Maps Address or Link</label>
+            <input name="googleAddress" value="${escapeHTML(s.googleAddress)}" placeholder="Paste Google Maps link, Plus Code, or address" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Bible Study Book / Publication</label>
+            <select id="studentBookSelect" name="bookId" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+              ${bookOptions}
+            </select>
+          </div>
+          <div id="customBookWrap" class="${s.bookId === "custom" ? "" : "hidden"}">
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Custom Book Title</label>
+            <input name="customBookName" value="${escapeHTML(s.customBookName)}" placeholder="Enter publication title" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Current Lesson / Chapter</label>
+              <input id="studentCurrentLesson" name="currentLesson" type="number" min="1" value="${Number(s.currentLesson) || 1}" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Total Lessons</label>
+              <input id="studentTotalLessons" name="totalLessons" type="number" min="1" value="${Number(s.totalLessons) || 60}" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Last Studied Date</label>
+            <input name="lastStudied" type="date" value="${escapeHTML(s.lastStudied || todayISO())}" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Notes</label>
+            <textarea name="notes" rows="2" placeholder="Progress notes, family members, meeting attendance..." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">${escapeHTML(s.notes)}</textarea>
+          </div>
+          <div class="flex items-center gap-2 pt-2">
+            ${existing ? `<button type="button" id="deleteStudentBtn" class="px-4 py-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 text-xs font-semibold hover:bg-rose-100 transition">Delete</button>` : ''}
+            <button type="submit" class="flex-1 py-2.5 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold transition">${existing ? "Save Changes" : "Save Student"}</button>
+          </div>
+        </form>
+      `);
+
+      const bookSelect = document.getElementById("studentBookSelect");
+      const customWrap = document.getElementById("customBookWrap");
+      const totalInput = document.getElementById("studentTotalLessons");
+
+      bookSelect.addEventListener("change", () => {
+        const chosen = getBook(bookSelect.value);
+        customWrap.classList.toggle("hidden", bookSelect.value !== "custom");
+        totalInput.value = chosen.totalLessons;
+      });
+
+      document.getElementById("studentForm").addEventListener("submit", e => {
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        const record = {
+          id: existing ? existing.id : "stu_" + Date.now(),
+          name: fd.get("name").trim(),
+          phone: fd.get("phone").trim(),
+          address: fd.get("address").trim(),
+          googleAddress: fd.get("googleAddress").trim(),
+          bookId: fd.get("bookId"),
+          customBookName: fd.get("customBookName").trim(),
+          currentLesson: Math.max(1, Number(fd.get("currentLesson")) || 1),
+          totalLessons: Math.max(1, Number(fd.get("totalLessons")) || 60),
+          schedule: fd.get("schedule").trim(),
+          lastStudied: fd.get("lastStudied") || todayISO(),
+          notes: fd.get("notes").trim(),
+          history: existing && Array.isArray(existing.history) ? existing.history : []
+        };
+        if (existing) {
+          const idx = state.students.findIndex(x => x.id === existing.id);
+          state.students[idx] = record;
+          showToast("Student updated");
+        } else {
+          state.students.unshift(record);
+          if (prefill && prefill._fromVisitId) {
+            state.returnVisits = state.returnVisits.filter(v => v.id !== prefill._fromVisitId);
+          }
+          showToast("Bible student added");
+        }
+        saveState();
+        closeModal();
+        render();
+      });
+
+      if (existing) {
+        document.getElementById("deleteStudentBtn").addEventListener("click", () => {
+          state.students = state.students.filter(x => x.id !== existing.id);
+          saveState();
+          closeModal();
+          render();
+          showToast("Student removed");
+        });
+      }
+    }
+
+    function openVisitModal(visitId = null) {
+      const existing = visitId ? state.returnVisits.find(v => v.id === visitId) : null;
+      const v = existing || {
+        name: "",
+        phone: "",
+        address: "",
+        googleAddress: "",
+        questionLeft: "",
+        publicationLeft: "",
+        lastVisit: todayISO(),
+        nextVisit: addDaysISO(7),
+        notes: ""
+      };
+
+      openModal(existing ? "Edit Return Visit" : "Add Return Visit", `
+        <form id="visitForm" class="space-y-3.5">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Person's Name *</label>
+            <input name="name" required value="${escapeHTML(v.name)}" placeholder="e.g., Mr. Emmanuel Taylor" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-amber-700 dark:text-amber-300 mb-1">Question Left for Return Visit *</label>
+            <textarea name="questionLeft" required rows="2" placeholder="What question did you leave to answer next time?" class="w-full px-3.5 py-2.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/30 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">${escapeHTML(v.questionLeft)}</textarea>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Phone Number</label>
+              <input name="phone" type="tel" value="${escapeHTML(v.phone)}" placeholder="+231 77 000 0000" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Publication / Tract Left</label>
+              <input name="publicationLeft" value="${escapeHTML(v.publicationLeft)}" placeholder="e.g., Enjoy Life Forever! Brochure" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Home / Street Address</label>
+            <input name="address" value="${escapeHTML(v.address)}" placeholder="House #, Street, Landmark" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Google Maps Address or Link</label>
+            <input name="googleAddress" value="${escapeHTML(v.googleAddress)}" placeholder="Paste Google Maps link, Plus Code, or address" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Last Visit</label>
+              <input name="lastVisit" type="date" value="${escapeHTML(v.lastVisit || todayISO())}" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Next Planned Visit</label>
+              <input name="nextVisit" type="date" value="${escapeHTML(v.nextVisit || addDaysISO(7))}" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Notes</label>
+            <textarea name="notes" rows="2" placeholder="Best time to call, interests, family context..." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">${escapeHTML(v.notes)}</textarea>
+          </div>
+          <div class="flex items-center gap-2 pt-2">
+            ${existing ? `<button type="button" id="deleteVisitBtn" class="px-4 py-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 text-xs font-semibold hover:bg-rose-100 transition">Delete</button>` : ''}
+            <button type="submit" class="flex-1 py-2.5 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold transition">${existing ? "Save Changes" : "Save Return Visit"}</button>
+          </div>
+        </form>
+      `);
+
+      document.getElementById("visitForm").addEventListener("submit", e => {
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        const record = {
+          id: existing ? existing.id : "rv_" + Date.now(),
+          name: fd.get("name").trim(),
+          phone: fd.get("phone").trim(),
+          address: fd.get("address").trim(),
+          googleAddress: fd.get("googleAddress").trim(),
+          questionLeft: fd.get("questionLeft").trim(),
+          publicationLeft: fd.get("publicationLeft").trim(),
+          lastVisit: fd.get("lastVisit") || todayISO(),
+          nextVisit: fd.get("nextVisit") || addDaysISO(7),
+          notes: fd.get("notes").trim()
+        };
+        if (existing) {
+          const idx = state.returnVisits.findIndex(x => x.id === existing.id);
+          state.returnVisits[idx] = record;
+          showToast("Return visit updated");
+        } else {
+          state.returnVisits.unshift(record);
+          showToast("Return visit added");
+        }
+        saveState();
+        closeModal();
+        render();
+      });
+
+      if (existing) {
+        document.getElementById("deleteVisitBtn").addEventListener("click", () => {
+          state.returnVisits = state.returnVisits.filter(x => x.id !== existing.id);
+          saveState();
+          closeModal();
+          render();
+          showToast("Return visit removed");
+        });
+      }
+    }
+
+    function openLogSessionModal(studentId) {
+      const s = state.students.find(x => x.id === studentId);
+      if (!s) return;
+      const book = getBook(s.bookId);
+      const historyHtml = (s.history || []).slice().reverse().map(h => `
+        <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-100 dark:border-slate-800 text-xs">
+          <div class="flex items-center justify-between font-semibold text-slate-700 dark:text-slate-200">
+            <span>${escapeHTML(book.unitLabel)} ${h.lesson}</span>
+            <span class="text-slate-400">${formatShortDate(h.date)}</span>
+          </div>
+          ${h.note ? `<p class="text-slate-500 dark:text-slate-400 mt-1">${escapeHTML(h.note)}</p>` : ''}
+        </div>
+      `).join("") || `<p class="text-xs text-slate-400 italic">No past sessions logged yet.</p>`;
+
+      openModal(`Study Log — ${s.name}`, `
+        <form id="logSessionForm" class="space-y-3">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">${escapeHTML(book.unitLabel)} Covered</label>
+              <input name="lesson" type="number" min="1" max="${s.totalLessons}" value="${s.currentLesson}" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Date</label>
+              <input name="date" type="date" value="${todayISO()}" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Session Notes</label>
+            <textarea name="note" rows="2" placeholder="Key points discussed, next lesson to prepare..." class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm"></textarea>
+          </div>
+          <button type="submit" class="w-full py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold transition">Save Session</button>
+        </form>
+        <div class="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
+          <div class="text-xs font-bold uppercase tracking-wider text-slate-500">Recent History</div>
+          <div class="space-y-2 max-h-44 overflow-y-auto">${historyHtml}</div>
+        </div>
+      `);
+
+      document.getElementById("logSessionForm").addEventListener("submit", e => {
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        const lesson = Math.min(s.totalLessons, Math.max(1, Number(fd.get("lesson")) || s.currentLesson));
+        const date = fd.get("date") || todayISO();
+        const note = fd.get("note").trim();
+        s.currentLesson = lesson;
+        s.lastStudied = date;
+        s.history = s.history || [];
+        s.history.push({ date, lesson, note });
+        saveState();
+        closeModal();
+        render();
+        showToast("Study session logged");
+      });
+    }
+
+    function openLffBrowserModal() {
+      const sections = [
+        { title: "Section 1 (Lessons 1–12)", range: [0, 12] },
+        { title: "Section 2 (Lessons 13–33)", range: [12, 33] },
+        { title: "Section 3 (Lessons 34–47)", range: [33, 47] },
+        { title: "Section 4 (Lessons 48–60)", range: [47, 60] }
+      ];
+      const html = sections.map(sec => `
+        <div class="space-y-1.5">
+          <h4 class="text-xs font-bold uppercase tracking-wider text-brand-700 dark:text-teal-300 sticky top-0 bg-white dark:bg-slate-900 py-1">${sec.title}</h4>
+          <ul class="space-y-1">
+            ${LFF_LESSONS.slice(sec.range[0], sec.range[1]).map(l => `
+              <li class="text-xs px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/70 text-slate-700 dark:text-slate-200">${escapeHTML(l)}</li>
+            `).join("")}
+          </ul>
+        </div>
+      `).join("");
+      openModal("Enjoy Life Forever! — 60 Lessons", `<div class="space-y-4">${html}</div>`);
+    }
+
+    function openBackupModal() {
+      openModal("Local Phone Data & Backup", `
+        <div class="space-y-4">
+          <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+            Your Bible students and return visits are saved locally in your phone's browser storage. Export a JSON backup anytime to move data or keep a copy.
+          </p>
+          <div class="grid grid-cols-1 gap-2.5">
+            <button type="button" id="exportJsonBtn" class="w-full py-2.5 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold transition">Export Backup (.json)</button>
+            <label class="w-full py-2.5 px-4 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-sm font-semibold text-center cursor-pointer transition">
+              Import Backup (.json)
+              <input id="importJsonInput" type="file" accept=".json,application/json" class="hidden" />
+            </label>
+            <button type="button" id="clearSampleBtn" class="w-full py-2.5 px-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 text-xs font-semibold hover:bg-rose-100 transition">Clear All Entries (Start Fresh)</button>
+          </div>
+        </div>
+      `);
+
+      document.getElementById("exportJsonBtn").addEventListener("click", () => {
+        const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `field-service-backup-${todayISO()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast("Backup downloaded");
+      });
+
+      document.getElementById("importJsonInput").addEventListener("change", e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+          try {
+            const parsed = JSON.parse(ev.target.result);
+            if (Array.isArray(parsed.students) && Array.isArray(parsed.returnVisits)) {
+              state.students = parsed.students;
+              state.returnVisits = parsed.returnVisits;
+              saveState();
+              closeModal();
+              render();
+              showToast("Backup restored");
+            } else {
+              showToast("Invalid backup format");
+            }
+          } catch (err) {
+            showToast("Could not read JSON file");
+          }
+        };
+        reader.readAsText(file);
+      });
+
+      document.getElementById("clearSampleBtn").addEventListener("click", () => {
+        state.students = [];
+        state.returnVisits = [];
+        saveState();
+        closeModal();
+        render();
+        showToast("All entries cleared");
+      });
+    }
+
+    // =========================================================================
+    // 7. EVENT LISTENERS
+    // =========================================================================
+    document.getElementById("themeToggleBtn").addEventListener("click", () => {
+      state.theme = state.theme === "dark" ? "light" : "dark";
+      saveState();
+      applyTheme();
+    });
+
+    document.getElementById("backupBtn").addEventListener("click", openBackupModal);
+    document.getElementById("modalCloseBtn").addEventListener("click", closeModal);
+    document.getElementById("modalBackdrop").addEventListener("click", e => {
+      if (e.target.id === "modalBackdrop") closeModal();
+    });
+
+    document.querySelectorAll(".nav-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        state.activeTab = btn.dataset.tab;
+        activeFilter = "all";
+        saveState();
+        render();
+      });
+    });
+
+    document.getElementById("searchInput").addEventListener("input", e => {
+      searchQuery = e.target.value;
+      render();
+    });
+
+    document.querySelectorAll(".filter-pill").forEach(pill => {
+      pill.addEventListener("click", () => {
+        activeFilter = pill.dataset.filter;
+        render();
+      });
+    });
+
+    document.getElementById("fabAddBtn").addEventListener("click", () => {
+      if (state.activeTab === "students") openStudentModal();
+      else if (state.activeTab === "visits") openVisitModal();
+    });
+
+    document.getElementById("mainContent").addEventListener("click", e => {
+      const btn = e.target.closest("[data-action]");
+      if (!btn) return;
+      const action = btn.dataset.action;
+      const id = btn.dataset.id;
+
+      if (action === "edit-student") {
+        openStudentModal(id);
+      } else if (action === "advance-lesson") {
+        const s = state.students.find(x => x.id === id);
+        if (s) {
+          if (s.currentLesson < s.totalLessons) {
+            s.currentLesson += 1;
+            s.lastStudied = todayISO();
+            s.history = s.history || [];
+            s.history.push({ date: todayISO(), lesson: s.currentLesson, note: "Advanced +1" });
+            saveState();
+            render();
+            showToast(`Moved to ${getBook(s.bookId).unitLabel} ${s.currentLesson}`);
+          } else {
+            showToast("Already at final lesson!");
+          }
+        }
+      } else if (action === "log-study") {
+        openLogSessionModal(id);
+      } else if (action === "edit-visit") {
+        openVisitModal(id);
+      } else if (action === "mark-visited") {
+        const v = state.returnVisits.find(x => x.id === id);
+        if (v) {
+          v.lastVisit = todayISO();
+          v.nextVisit = addDaysISO(7);
+          saveState();
+          render();
+          showToast("Visit logged · Next in 7 days");
+        }
+      } else if (action === "promote-visit") {
+        const v = state.returnVisits.find(x => x.id === id);
+        if (v) {
+          openStudentModal(null, {
+            _fromVisitId: v.id,
+            name: v.name,
+            phone: v.phone,
+            address: v.address,
+            googleAddress: v.googleAddress,
+            bookId: "lff",
+            customBookName: "",
+            currentLesson: 1,
+            totalLessons: 60,
+            schedule: "",
+            lastStudied: todayISO(),
+            notes: v.questionLeft ? `Initial interest question: ${v.questionLeft}` : v.notes
+          });
+        }
+      } else if (action === "browse-lff") {
+        openLffBrowserModal();
+      }
+    });
+
+    // Init
+    applyTheme();
+    render();
+
+    // Offline support: cache the app so it opens without an internet connection
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch((err) => console.warn('Service worker registration failed', err));
+      });
+    }
+  </script>
+</body>
+</html>
