@@ -60,9 +60,11 @@ const researchPanel = (() => {
       topic.verses.forEach(([title,path],i) => {
         if (i) verses.append(' · ');
         const passage = path.split('#v')[1].replace('-v', '-');
-        const verseLink = link(title, 'https://www.jw.org/finder?' + new URLSearchParams({wtlocale:'E', bible:passage}));
+        const verseLink = link(title, 'jwlibrary:///finder?' + new URLSearchParams({wtlocale:'E', bible:passage}));
         verseLink.removeAttribute('target');
-        verses.append(verseLink);
+        const webLink = link('JW.org', new URL(path, 'https://www.jw.org').href);
+        webLink.setAttribute('aria-label', 'Read ' + title + ' on JW.org');
+        verses.append(verseLink, ' (', webLink, ')');
       });
       card.append(verses);
       topics.append(card);
