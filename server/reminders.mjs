@@ -1,5 +1,5 @@
 import {createHash} from 'node:crypto';
-import {appKeys,devices,validSubscription} from '../../server/reminder-store.mjs';
+import {appKeys,devices,validSubscription} from './reminder-store.mjs';
 export default async function handler(req) {
   if (req.method === 'GET') return Response.json({publicKey:(await appKeys()).publicKey}, {headers:{'Cache-Control':'no-store'}});
   if (req.method !== 'POST' || req.headers.get('origin') !== new URL(req.url).origin) return new Response(null,{status:403});

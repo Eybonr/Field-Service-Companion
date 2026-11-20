@@ -87,7 +87,7 @@ const researchPanel = (() => {
     }
     library.textContent = 'Searching Watchtower ONLINE LIBRARY…';
     try {
-      const response = await fetch('/.netlify/functions/research?'+new URLSearchParams({q:query}),{signal:controller.signal});
+      const response = await fetch('/api/research?'+new URLSearchParams({q:query}),{signal:controller.signal});
       if (!response.ok) throw new Error();
       const results = await response.json();
       if (current !== version) return;

@@ -1,14 +1,43 @@
-import { getStore } from '@netlify/blobs';
+import { DatabaseSync } from 'node:sqlite';
+import { randomUUID } from 'node:crypto';
+import { mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 import webpush from 'web-push';
-export const devices = () => getStore({name:'reminder-devices', consistency:'strong'});
 
-export async function appKeys() {
-  const store = getStore({name:'reminder-config', consistency:'strong'});
-  const saved = await store.get('keys', {type:'json'});
-  if (saved) return saved;
-  const keys = webpush.generateVAPIDKeys();
-  const result = await store.setJSON('keys', keys, {onlyIfNew:true});
-  return result.modified ? keys : store.get('keys', {type:'json'});
+const directory = process.env.RAILWAY_VOLUME_MOUNT_PATH || process.env.DATA_DIR;
+if (!directory) throw new Error('Set DATA_DIR for local use or attach a Railway volume.');
+mkdirSync(directory, {recursive:true});
+const db = new DatabaseSync(join(directory,'ministry.sqlite'));
+db.exec(`PRAGMA journal_mode=WAL;
+  CREATE TABLE IF NOT EXISTS devices (key TEXT PRIMARY KEY, data TEXT NOT NULL, etag TEXT NOT NULL);
+  CREATE TABLE IF NOT EXISTS config (key TEXT PRIMARY KEY, data TEXT NOT NULL);`);
+
+const read = db.prepare('SELECT data,etag FROM devices WHERE key=?');
+const insert = db.prepare('INSERT OR IGNORE INTO devices VALUES(?,?,?)');
+const update = db.prepare('UPDATE devices SET data=?,etag=? WHERE key=? AND etag=?');
+const remove = db.prepare('DELETE FROM devices WHERE key=?');
+const keys = db.prepare('SELECT key FROM devices');
+export const deviceKeys = () => keys.all().map(row => row.key);
+const store = {
+  getWithMetadata(key) {
+    const row = read.get(key);
+    return row && {data:JSON.parse(row.data),etag:row.etag};
+  },
+  setJSON(key,value,condition) {
+    const etag = randomUUID();
+    const data = JSON.stringify(value);
+    const result = condition.onlyIfNew ? insert.run(key,data,etag) : update.run(data,etag,key,condition.onlyIfMatch);
+    return {modified:result.changes === 1,etag};
+  },
+  delete(key) {remove.run(key);}
+};
+export const devices = () => store;
+export function appKeys() {
+  const readKeys = db.prepare("SELECT data FROM config WHERE key='vapid'");
+  const row = readKeys.get();
+  if (row) return JSON.parse(row.data);
+  db.prepare("INSERT OR IGNORE INTO config VALUES('vapid',?)").run(JSON.stringify(webpush.generateVAPIDKeys()));
+  return JSON.parse(readKeys.get().data);
 }
 
 export function validSubscription(sub) {

@@ -1,7 +1,7 @@
 /* Service worker: caches the app shell so Ministry Companion works offline.
    Bump CACHE_VERSION whenever vendored assets change. index.html is always
    fetched from the network first when online, so app updates arrive automatically. */
-const CACHE_VERSION = 'v5-direct-jw-library';
+const CACHE_VERSION = 'v6-independent-host';
 const CACHE_NAME = `ministry-companion-${CACHE_VERSION}`;
 const APP_SHELL = [
   '/',
@@ -42,7 +42,7 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
-  if (url.pathname.startsWith("/.netlify/")) return;
+  if (url.pathname.startsWith("/api/")) return;
 
   // Page navigations: network first (fresh app when online), cached shell when offline.
   if (request.mode === 'navigate') {

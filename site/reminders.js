@@ -1,5 +1,5 @@
 (() => {
-  const url = '/.netlify/functions/reminders';
+  const url = '/api/reminders';
   const identity = 'ministry-reminder-device';
   const button = document.querySelector('#toggleAlerts');
   const status = document.querySelector('#alertStatus');
