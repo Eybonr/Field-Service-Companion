@@ -1,7 +1,7 @@
 /* Service worker: caches the app shell so Ministry Companion works offline.
    Bump CACHE_VERSION whenever vendored assets change. index.html is always
    fetched from the network first when online, so app updates arrive automatically. */
-const CACHE_VERSION = 'v6-independent-host';
+const CACHE_VERSION = 'v7-offline-subjects';
 const CACHE_NAME = `ministry-companion-${CACHE_VERSION}`;
 const APP_SHELL = [
   '/',
@@ -9,6 +9,7 @@ const APP_SHELL = [
   '/reminders.js',
   '/research-topics.js',
   '/research.js',
+  '/offline-index.js',
   '/vendor/tailwind-3.4.17.js',
   '/vendor/fonts/inter.css',
   '/vendor/fonts/inter-latin.woff2',

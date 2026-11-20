@@ -9,7 +9,15 @@ const researchPanel = (() => {
       <button class="rounded-xl bg-brand-600 text-white px-4 font-semibold">Search</button></div>
     </form>
     <div class="flex flex-wrap gap-2" aria-label="Suggested searches"></div>
-    <div data-topics></div><div data-library></div><div data-links class="space-y-2"></div>
+    <div data-topics></div>
+    <section aria-label="Offline topic index" class="border-t border-slate-200 dark:border-slate-700 pt-3">
+      <h3 class="font-bold">Offline topic index</h3>
+      <p data-count class="text-sm"></p>
+      <label class="inline-block text-sm my-2">Browse by letter
+        <select data-letter class="rounded-lg border dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1"><option value="">Choose a letter</option></select>
+      </label>
+      <div data-index-results></div>
+    </section><div data-library></div><div data-links class="space-y-2"></div>
   `;
   const form = panel.querySelector('form');
   const input = form.querySelector('input');
@@ -43,6 +51,64 @@ const researchPanel = (() => {
     return text.toLowerCase().normalize('NFKD').replace(/[’']/g,'').match(/[a-z0-9]+/g) || [];
   }
   const common = new Set(words('a an the is it of for what why when where in on does do did how who that are will be to and my me i can we with you our us there about'));
+  const catalog = offlineSubjectIndex.map(([title,id]) => ({title,id,tokens:words(title)}));
+  const letter = panel.querySelector('[data-letter]');
+  const indexResults = panel.querySelector('[data-index-results]');
+  const count = panel.querySelector('[data-count]');
+  const total = catalog.length.toLocaleString('en-US');
+  count.textContent = total + ' topics from the Watch Tower Publications Index (1986–2026).';
+  if ('caches' in window && 'serviceWorker' in navigator) {
+    navigator.serviceWorker.ready.then(async () => {
+      if (await caches.match('/offline-index.js')) count.textContent += ' Saved on this device.';
+    }).catch(() => {});
+  }
+  const initials = [...new Set(catalog.map(row => row.tokens[0]?.[0]).filter(Boolean))].sort();
+  for (const initial of initials) letter.add(new Option(initial.toUpperCase(),initial));
+  function displayIndex(matches) {
+    indexResults.replaceChildren();
+    if (!matches.length) {indexResults.textContent = 'No matching index headings. Try one or two keywords.'; return;}
+    const summary = element('p',matches.length.toLocaleString() + ' matching topics','text-sm mb-2');
+    indexResults.append(summary);
+    let position = 0;
+    function more() {
+      for (const item of matches.slice(position,position+15)) {
+        const row = element('article','','border-t py-2 dark:border-slate-700');
+        row.append(element('p',item.title,'font-semibold'));
+        const appLink = link('JW Library','jwlibrary:///finder?wtlocale=E&docid='+item.id);
+        appLink.removeAttribute('target');
+        row.append(appLink,' · ',link('Online Library','https://wol.jw.org/en/wol/d/r1/lp-e/'+item.id));
+        indexResults.append(row);
+      }
+      position += 15;
+      if (position < matches.length) {
+        const next = element('button','Show more topics','rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800');
+        next.type = 'button';
+        next.onclick = () => {next.remove();more();};
+        indexResults.append(next);
+      }
+    }
+    more();
+  }
+  letter.onchange = () => {
+    if (!letter.value) {indexResults.replaceChildren();return;}
+    displayIndex(catalog.filter(row=>row.tokens[0]?.[0]===letter.value));
+  };
+  function searchIndex(query) {
+    letter.value = '';
+    const terms = [...new Set(words(query).filter(term=>!common.has(term)))];
+    const phrase = words(query).join(' ');
+    const scored = [];
+    for (const row of catalog) {
+      const titleWords = row.tokens.join(' ');
+      const hits = terms.filter(t=>row.tokens.some(word=>word===t || (t.length>=3 && word.startsWith(t))));
+      if (!hits.length && titleWords!==phrase) continue;
+      const score = (titleWords===phrase ? 1000 : 0) + (titleWords.includes(phrase) ? 100 : 0)
+        + hits.length*10 + hits.filter(t=>row.tokens.includes(t)).length;
+      scored.push({row,score});
+    }
+    scored.sort((a,b)=>b.score-a.score);
+    displayIndex(scored.map(hit=>hit.row));
+  }
   function showTopics(query) {
     topics.replaceChildren();
     const terms = [...new Set(words(query).filter(t => !common.has(t)))];
@@ -77,6 +143,7 @@ const researchPanel = (() => {
     controller?.abort();
     controller = new AbortController();
     showTopics(query);
+    searchIndex(query);
     const wol = searchLink('https://wol.jw.org/en/wol/s/r1/lp-e',query);
     const jw = searchLink('https://www.jw.org/en/search/',query);
     links.replaceChildren();
@@ -85,6 +152,7 @@ const researchPanel = (() => {
       row.append(link(title,url));
       links.append(row);
     }
+    if (!navigator.onLine) {library.textContent = 'Offline. Download the Index in JW Library to read its entries without internet.';return;}
     library.textContent = 'Searching Watchtower ONLINE LIBRARY…';
     try {
       const response = await fetch('/api/research?'+new URLSearchParams({q:query}),{signal:controller.signal});
