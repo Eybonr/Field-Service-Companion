@@ -56,10 +56,13 @@ const researchPanel = (() => {
       const card = element('article','','border-t border-slate-200 dark:border-slate-700 py-3');
       card.append(link(topic.title,topic.url));
       const verses = element('p','','text-sm mt-1');
-      verses.append('Scriptures cited: ');
+      verses.append('Read in JW Library: ');
       topic.verses.forEach(([title,path],i) => {
         if (i) verses.append(' · ');
-        verses.append(link(title,new URL(path,'https://www.jw.org').href));
+        const passage = path.split('#v')[1].replace('-v', '-');
+        const verseLink = link(title, 'https://www.jw.org/finder?' + new URLSearchParams({wtlocale:'E', bible:passage}));
+        verseLink.removeAttribute('target');
+        verses.append(verseLink);
       });
       card.append(verses);
       topics.append(card);
