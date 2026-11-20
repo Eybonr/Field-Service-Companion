@@ -1,11 +1,12 @@
 /* Service worker: caches the app shell so Ministry Companion works offline.
    Bump CACHE_VERSION whenever vendored assets change. index.html is always
    fetched from the network first when online, so app updates arrive automatically. */
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2-reminders';
 const CACHE_NAME = `ministry-companion-${CACHE_VERSION}`;
 const APP_SHELL = [
   '/',
   '/manifest.webmanifest',
+  '/reminders.js',
   '/vendor/tailwind-3.4.17.js',
   '/vendor/fonts/inter.css',
   '/vendor/fonts/inter-latin.woff2',
@@ -39,6 +40,7 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+  if (url.pathname.startsWith("/.netlify/")) return;
 
   // Page navigations: network first (fresh app when online), cached shell when offline.
   if (request.mode === 'navigate') {
@@ -69,4 +71,24 @@ self.addEventListener('fetch', (event) => {
       });
     })
   );
+});
+
+self.addEventListener('push', event => {
+  const data = event.data?.json() || {};
+  const kinds = data.kinds || [];
+  const what = kinds.length > 1 ? 'A return visit and a Bible study are due.' :
+    kinds.includes('study') ? 'You have a Bible study due.' : 'You have a return visit due.';
+  event.waitUntil(self.registration.showNotification('Ministry Companion', {
+    body:what, icon:'/icons/icon-192.png', tag:'ministry-'+kinds.join('-')+'-'+data.at
+  }));
+});
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  event.waitUntil((async () => {
+    const url = new URL('/#reminders', self.location.origin).href;
+    const windows = await self.clients.matchAll({type:'window'});
+    if (!windows.length) return self.clients.openWindow(url);
+    const client = await windows[0].navigate(url);
+    return client?.focus();
+  })());
 });
