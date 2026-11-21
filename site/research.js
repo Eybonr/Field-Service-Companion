@@ -41,6 +41,19 @@ const researchPanel = (() => {
     node.rel = 'noopener noreferrer';
     return node;
   }
+  function articleLinks(title, address, docId) {
+    const url = new URL(address);
+    if (!docId && url.origin === 'https://wol.jw.org') {
+      docId = url.pathname.match(/^\/en\/wol\/d\/r1\/lp-e\/(\d+)\/?$/)?.[1];
+    }
+    if (!/^\d+$/.test(docId)) return [link(title,address)];
+    const app = link(title,'jwlibrary:///finder?' + new URLSearchParams({wtlocale:'E',docid:docId}));
+    app.removeAttribute('target');
+    app.setAttribute('aria-label',title + ' — open in JW Library');
+    const web = link('Read online',address);
+    web.setAttribute('aria-label',title + ' — read online');
+    return [app,' · ',web];
+  }
   function searchLink(base, query) {
     const url = new URL(base);
     url.searchParams.set('q', query);
@@ -73,10 +86,7 @@ const researchPanel = (() => {
     function more() {
       for (const item of matches.slice(position,position+15)) {
         const row = element('article','','border-t py-2 dark:border-slate-700');
-        row.append(element('p',item.title,'font-semibold'));
-        const appLink = link('JW Library','jwlibrary:///finder?wtlocale=E&docid='+item.id);
-        appLink.removeAttribute('target');
-        row.append(appLink,' · ',link('Online Library','https://wol.jw.org/en/wol/d/r1/lp-e/'+item.id));
+        row.append(...articleLinks(item.title,'https://wol.jw.org/en/wol/d/r1/lp-e/'+item.id,item.id));
         indexResults.append(row);
       }
       position += 15;
@@ -120,7 +130,7 @@ const researchPanel = (() => {
     if (ranked.length) topics.append(heading('Bible Questions Answered · JW.org'));
     for (const {topic} of ranked.slice(0,3)) {
       const card = element('article','','border-t border-slate-200 dark:border-slate-700 py-3');
-      card.append(link(topic.title,topic.url));
+      card.append(...articleLinks(topic.title,topic.url,topic.docId));
       const verses = element('p','','text-sm mt-1');
       verses.append('Read in JW Library: ');
       topic.verses.forEach(([title,path],i) => {
@@ -163,7 +173,7 @@ const researchPanel = (() => {
       if (!results.length) library.append('No publication titles found. Try fewer words or open the full library search below.');
       for (const hit of results) {
         const row = element('article','','border-t border-slate-200 dark:border-slate-700 py-2');
-        row.append(link(hit.title,hit.url));
+        row.append(...articleLinks(hit.title,hit.url));
         if (hit.reference) row.append(element('p',hit.reference,'text-sm text-slate-500 dark:text-slate-400'));
         library.append(row);
       }
