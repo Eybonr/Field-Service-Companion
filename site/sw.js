@@ -1,7 +1,7 @@
 /* Service worker: caches the app shell so Ministry Companion works offline.
    Bump CACHE_VERSION whenever vendored assets change. index.html is always
    fetched from the network first when online, so app updates arrive automatically. */
-const CACHE_VERSION = 'v8-article-links';
+const CACHE_VERSION = 'v9-apple-library-links';
 const CACHE_NAME = `ministry-companion-${CACHE_VERSION}`;
 const APP_SHELL = [
   '/',

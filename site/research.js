@@ -41,13 +41,20 @@ const researchPanel = (() => {
     node.rel = 'noopener noreferrer';
     return node;
   }
+  function libraryAddress(reference) {
+    // iPadOS can request desktop sites and identify itself as a Mac.
+    const appleMobile = /iPhone|iPad|iPod/i.test(navigator.userAgent)
+      || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const base = appleMobile ? 'https://www.jw.org/finder' : 'jwlibrary:///finder';
+    return base + '?' + new URLSearchParams({wtlocale:'E',...reference});
+  }
   function articleLinks(title, address, docId) {
     const url = new URL(address);
     if (!docId && url.origin === 'https://wol.jw.org') {
       docId = url.pathname.match(/^\/en\/wol\/d\/r1\/lp-e\/(\d+)\/?$/)?.[1];
     }
     if (!/^\d+$/.test(docId)) return [link(title,address)];
-    const app = link(title,'jwlibrary:///finder?' + new URLSearchParams({wtlocale:'E',docid:docId}));
+    const app = link(title,libraryAddress({docid:docId}));
     app.removeAttribute('target');
     app.setAttribute('aria-label',title + ' — open in JW Library');
     const web = link('Read online',address);
@@ -136,7 +143,7 @@ const researchPanel = (() => {
       topic.verses.forEach(([title,path],i) => {
         if (i) verses.append(' · ');
         const passage = path.split('#v')[1].replace('-v', '-');
-        const verseLink = link(title, 'jwlibrary:///finder?' + new URLSearchParams({wtlocale:'E', bible:passage}));
+        const verseLink = link(title, libraryAddress({bible:passage}));
         verseLink.removeAttribute('target');
         const webLink = link('JW.org', new URL(path, 'https://www.jw.org').href);
         webLink.setAttribute('aria-label', 'Read ' + title + ' on JW.org');
