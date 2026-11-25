@@ -1,7 +1,7 @@
 /* Service worker: caches the app shell so Ministry Companion works offline.
    Bump CACHE_VERSION whenever vendored assets change. index.html is always
    fetched from the network first when online, so app updates arrive automatically. */
-const CACHE_VERSION = 'v9-apple-library-links';
+const CACHE_VERSION = 'v10-hour-before-reminders';
 const CACHE_NAME = `ministry-companion-${CACHE_VERSION}`;
 const APP_SHELL = [
   '/',
@@ -82,7 +82,7 @@ self.addEventListener('push', event => {
   const what = kinds.length > 1 ? 'A return visit and a Bible study are due.' :
     kinds.includes('study') ? 'You have a Bible study due.' : 'You have a return visit due.';
   event.waitUntil(self.registration.showNotification('Ministry Companion', {
-    body:what, icon:'/icons/icon-192.png', tag:'ministry-'+kinds.join('-')+'-'+data.at
+    body:data.at > Date.now() ? what.replace(' are due.', ' are coming up at ').replace(' due.', ' coming up at ') + new Date(data.at).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}) + '.' : what, icon:'/icons/icon-192.png', tag:'ministry-'+kinds.join('-')+'-'+data.at
   }));
 });
 self.addEventListener('notificationclick', event => {

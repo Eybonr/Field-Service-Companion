@@ -55,7 +55,7 @@ export async function dispatch(store, key, send, now = Date.now()) {
   const entry = await store.getWithMetadata(key, {type:'json'});
   if (!entry) return;
   const {data, etag} = entry;
-  const due = data.events.filter(e => !e.sent && e.at <= now && now - e.at < 86400000);
+  const due = data.events.filter(e => !e.sent && e.at - 3600000 <= now && e.at > now);
   if (!due.length || data.lease > now) return;
   const claim = await store.setJSON(key, {...data, lease:now + 90000}, {onlyIfMatch:etag});
   if (!claim.modified) return;

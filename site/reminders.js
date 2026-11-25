@@ -25,6 +25,10 @@
       link.textContent = (item.kind === 'study' ? 'Bible study' : 'Return visit') + ' · ' + item.record.name + ' · ' + new Date(item.at).toLocaleString();
       link.onclick = () => item.kind === 'study' ? openStudentModal(item.record.id) : openVisitModal(item.record.id);
       row.append(link);
+      const reminder = document.createElement('p');
+      reminder.className = 'text-xs text-slate-500';
+      reminder.textContent = 'Reminder · ' + new Date(item.at - 3600000).toLocaleString();
+      row.append(reminder);
       list.append(row);
     }
     if (!list.childElementCount) list.textContent = 'No reminders scheduled.';
